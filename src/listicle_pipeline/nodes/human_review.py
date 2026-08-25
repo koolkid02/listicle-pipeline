@@ -1,3 +1,4 @@
+from ..config import MAX_HITL_ATTEMPTS
 from ..state import Company, PipelineState
 
 STALE_DAYS_THRESHOLD = 30
@@ -47,8 +48,13 @@ def human_review(state: PipelineState) -> dict:
         "\nEnter the indices to include, in your preferred final order "
         "(e.g. '3,1,7' or '1-8'), or 'all' to keep every candidate in the order shown."
     )
-    raw = input("Include (default: all): ")
-    selected_indices = _parse_selection(raw, len(companies))
+    while True:
+        raw = input("Include (default: all): ")
+        try:
+            selected_indices = _parse_selection(raw, len(companies))
+            break
+        except ValueError:
+            print(f"Couldn't parse '{raw}' - use indices/ranges like '3,1,7' or '1-8', or 'all'.")
     final_companies = [companies[i] for i in selected_indices]
 
     print(f"\nSelected {len(final_companies)} companies:")
@@ -59,13 +65,11 @@ def human_review(state: PipelineState) -> dict:
     approved = approve_raw in ("", "y", "yes")
 
     if not approved:
-        print("Escalating back to the scope guardrail - please restate what you want.")
-        new_prompt = input("Restate your request: ").strip()
-        return {
-            "hitl_approved": False,
-            "user_prompt": new_prompt or state.user_prompt,
-            "guardrail_attempts": state.guardrail_attempts + 1,
-        }
+        print(
+            f"\nNo problem - let's redo the selection "
+            f"(attempt {state.hitl_attempts + 1}/{MAX_HITL_ATTEMPTS})."
+        )
+        return {"hitl_approved": False, "hitl_attempts": state.hitl_attempts + 1}
 
     return {
         "hitl_approved": True,

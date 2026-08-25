@@ -1,0 +1,18 @@
+Write the opening of an SEO listicle about "{primary_keyword}" ({category}),
+covering {company_count} companies.
+
+Lexical keywords available (weave the strongest one naturally into the title,
+and reflect the category wording in the URL slug): {lexical_keywords}
+
+Semantic keywords available (weave one or two naturally into the dek and/or
+intro): {semantic_keywords}
+
+Return:
+- title: an SEO title, e.g. "8 Best {primary_keyword} Platforms in 2026" style
+  (adjust the count to {company_count}). Include the strongest lexical keyword.
+- url_slug: a lowercase, hyphenated slug derived from the title (no dates).
+- dek: one sentence summarizing the value of this comparison for a reader
+  shopping for this kind of software.
+- intro_paragraphs: exactly 2 paragraphs. The first paragraph should be a
+  hook/scenario. The second should explain what this kind of software does
+  and why the comparison is useful, naturally including the primary keyword.

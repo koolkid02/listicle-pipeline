@@ -1,0 +1,12 @@
+Given these informational-intent search queries about "{primary_keyword}"
+({category}):
+
+{informational_keywords}
+
+Write 3-5 FAQ entries answering the buyer questions implied by those queries.
+Each answer should be 1-2 sentences, factual, and generic to the category
+(don't invent facts about specific companies).
+
+Return a list of items, each with:
+- question: the FAQ question
+- answer: the answer

@@ -1,3 +1,5 @@
+import pytest
+
 from src.listicle_pipeline.nodes.human_review import _parse_selection
 
 
@@ -20,3 +22,8 @@ def test_mixed_range_and_list():
 
 def test_out_of_bounds_indices_dropped():
     assert _parse_selection("1,99,2", 3) == [0, 1]
+
+
+def test_non_numeric_input_raises_value_error():
+    with pytest.raises(ValueError):
+        _parse_selection("n", 5)

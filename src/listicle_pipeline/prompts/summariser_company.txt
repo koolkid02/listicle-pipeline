@@ -1,0 +1,25 @@
+Write listicle prose for one company section in an SEO article about
+"{primary_keyword}" ({category}). Use only the facts given below - do not
+invent anything beyond them.
+
+Company facts:
+- Name: {company_name}
+- Positioning: {positioning}
+- Starting price: {starting_price}
+- Rating: {aggregated_rating}/5 ({review_count} reviews)
+- What it does well: {what_it_does_well}
+- Gaps: {gaps}
+- Best for: {best_for}
+
+Return:
+- summary_blurb: 2-3 sentences introducing the company, its positioning, and
+  what makes it distinct. Engaging but factual SEO-blog tone.
+- does_well_prose: one full sentence per "what it does well" bullet, expanding
+  it into natural prose (same order, same count as the input bullets).
+- gaps_prose: one full sentence per gap bullet, expanding it into natural,
+  even-handed prose (same order, same count as the input bullets).
+- best_for_line: one sentence expanding "best for" into a natural
+  recommendation sentence.
+
+Do not mention pricing or star rating in any of these fields - those are
+rendered separately.

@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+import operator
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -45,6 +46,73 @@ class RetrievalOutput(BaseModel):
     keywords: list[Keyword]
 
 
+class SummarySource(BaseModel):
+    company_name: str
+    generated_at: str
+
+
+class CompanySummary(BaseModel):
+    company_name: str
+    summary_blurb: str
+    does_well_prose: list[str]
+    gaps_prose: list[str]
+    best_for_line: str
+    pricing_line: str
+    rating_line: str
+    source: SummarySource
+
+
+class TitleDekBlock(BaseModel):
+    title: str
+    url_slug: str
+    dek: str
+    intro_paragraphs: list[str]
+
+
+class BuyingCriterionItem(BaseModel):
+    h3: str
+    body: str
+
+
+class FaqItem(BaseModel):
+    question: str
+    answer: str
+
+
+class ComparisonRow(BaseModel):
+    company_name: str
+    best_for_line: str
+    starting_price: str
+    rating: float
+
+
+class ComparisonTable(BaseModel):
+    columns: list[str]
+    rows: list[ComparisonRow]
+
+
+class CompanySection(BaseModel):
+    company_name: str
+    h3: str
+    summary_blurb: str
+    does_well_prose: list[str]
+    gaps_prose: list[str]
+    pricing_line: str
+    rating_line: str
+    best_for_line: str
+
+
+class FormatterDraft(BaseModel):
+    title: str
+    url_slug: str
+    dek: str
+    intro_paragraphs: list[str]
+    comparison_table: ComparisonTable
+    company_sections: list[CompanySection]
+    buying_criteria_section: list[BuyingCriterionItem]
+    faq: list[FaqItem]
+
+
 class PipelineState(BaseModel):
     user_prompt: str
 
@@ -67,3 +135,10 @@ class PipelineState(BaseModel):
     final_companies: list[Company] = Field(default_factory=list)
     final_count: Optional[int] = None
     hitl_approved: Optional[bool] = None
+    hitl_attempts: int = 0
+
+    company_summaries: Annotated[list[CompanySummary], operator.add] = Field(default_factory=list)
+    title_dek: Optional[TitleDekBlock] = None
+    buying_criteria_section: list[BuyingCriterionItem] = Field(default_factory=list)
+    faq: list[FaqItem] = Field(default_factory=list)
+    final_draft: Optional[FormatterDraft] = None

@@ -1,0 +1,11 @@
+Write a "what to look for" buying-criteria section for an SEO listicle about
+"{primary_keyword}" ({category}).
+
+Semantic keywords available (use as inspiration for which criteria matter -
+weave the phrasing in naturally where it fits, don't force every one in):
+{semantic_keywords}
+
+Return 3-4 buying-criteria items, each with:
+- h3: a short criterion heading (e.g. "Ease of setup", "Integrations")
+- body: 1-2 sentences explaining what to check for and why it matters, generic
+  to the category (don't reference any specific company).

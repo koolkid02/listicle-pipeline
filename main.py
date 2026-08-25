@@ -1,7 +1,8 @@
+import json
 import sys
 import uuid
 
-from src.listicle_pipeline.config import RECURSION_LIMIT
+from src.listicle_pipeline.config import OUTPUT_DIR, RECURSION_LIMIT
 from src.listicle_pipeline.graph import build_graph
 from src.listicle_pipeline.state import PipelineState
 
@@ -19,19 +20,21 @@ def main() -> None:
 
     final_state = graph.invoke(PipelineState(user_prompt=prompt), config=config)
 
-    if not final_state.get("hitl_approved"):
-        print("\nNo approved retrieval output was produced.")
+    draft = final_state.get("final_draft")
+    if draft is None:
+        print("\nNo draft was produced.")
         return
 
-    output = final_state["retrieval_output"]
-    print(f"\n=== Retrieval output: {output.category} ===")
-    print(f"Primary keyword: {output.primary_keyword}")
-    print(f"\nApproved companies ({len(final_state['final_companies'])}):")
-    for c in final_state["final_companies"]:
-        print(f"  - {c.company_name} ({c.aggregated_rating}/5, {c.review_count} reviews)")
-    print(f"\nGenerated keywords ({len(output.keywords)}):")
-    for k in output.keywords:
-        print(f"  [{k.relationship_type}/{k.intent_stage}] {k.keyword} ({k.similarity_score:.2f})")
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    out_path = OUTPUT_DIR / f"{draft.url_slug}.json"
+    out_path.write_text(json.dumps(draft.model_dump(), indent=2))
+
+    print(f"\n=== {draft.title} ===")
+    print(draft.dek)
+    print(f"\nCompanies covered: {len(draft.company_sections)}")
+    print(f"Buying-criteria items: {len(draft.buying_criteria_section)}")
+    print(f"FAQ entries: {len(draft.faq)}")
+    print(f"\nFull draft written to {out_path}")
 
 
 if __name__ == "__main__":
