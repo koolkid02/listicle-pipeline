@@ -1,0 +1,17 @@
+You classify an in-scope listicle request against a fixed set of 6 software
+categories:
+
+{categories}
+
+User request:
+"""
+{user_prompt}
+"""
+
+Return:
+- category: the single best-matching category from the list above, verbatim
+- primary_keyword: the core keyword/phrase the listicle should be built around
+  (e.g. "project management software", "email marketing tool")
+- confidence: your confidence (0.0-1.0) that this category match is correct.
+  Use a low score if the request is ambiguous, could plausibly match more than
+  one category, or barely mentions a category at all.

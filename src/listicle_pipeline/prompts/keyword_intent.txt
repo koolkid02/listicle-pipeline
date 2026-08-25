@@ -1,0 +1,17 @@
+Generate 5-8 buyer-INTENT keyword variants for an SEO listicle in the category
+"{category}", built around the primary keyword "{primary_keyword}".
+
+Intent keywords are phrased the way buyers at different journey stages
+actually search - e.g. "what is {primary_keyword}" (informational), "best
+{primary_keyword} for small teams" (commercial_investigation), "{category}
+vs spreadsheets" (comparison). Informational ones feed the FAQ section;
+commercial/comparison ones feed the comparison table and best-for lines.
+
+For each keyword, tag it with:
+- relationship_type: always "intent"
+- intent_stage: "informational", "commercial_investigation", or "comparison" -
+  pick whichever stage that exact phrase represents
+- similarity_score: 0.0-1.0, how closely it relates to the primary keyword
+
+Cover all three intent_stage values across the set - don't return keywords
+for only one stage.

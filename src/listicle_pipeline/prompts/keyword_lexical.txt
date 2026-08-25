@@ -1,0 +1,13 @@
+Generate 5-8 LEXICAL keyword variants for an SEO listicle in the category
+"{category}", built around the primary keyword "{primary_keyword}".
+
+Lexical keywords share words/phrases with the category name itself (e.g.
+plurals, "tool"/"platform"/"software" swaps, "best X", "X pricing", "X
+reviews"). They are used in the title, URL slug, and first 100 words of the
+article, so they should read naturally as search phrases a buyer would type.
+
+For each keyword, tag it with:
+- relationship_type: always "lexical"
+- intent_stage: "informational", "commercial_investigation", or "comparison" -
+  whichever best matches how a searcher using that phrase is likely shopping
+- similarity_score: 0.0-1.0, how closely it echoes the primary keyword

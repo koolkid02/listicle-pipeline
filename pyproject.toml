@@ -1,0 +1,18 @@
+[project]
+name = "listicle-pipeline"
+version = "0.1.0"
+description = "SEO listicle generation pipeline (Zuddl take-home)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.6.4",
+    "langchain-openai>=0.2.0",
+    "langsmith>=0.4.13",
+    "pydantic>=2.9.0",
+    "python-dotenv>=1.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+]

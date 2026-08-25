@@ -1,0 +1,14 @@
+Generate 5-8 SEMANTIC keyword variants for an SEO listicle in the category
+"{category}", built around the primary keyword "{primary_keyword}".
+
+Semantic keywords cover related topics using different words (e.g. for
+project management software: "sprint planning", "resource allocation",
+"team collaboration workflow"). They go in subheadings and body text to prove
+topical depth, not just keyword repetition.
+
+For each keyword, tag it with:
+- relationship_type: always "semantic"
+- intent_stage: "informational", "commercial_investigation", or "comparison" -
+  whichever best matches how a searcher using that phrase is likely shopping
+- similarity_score: 0.0-1.0, how closely it relates to the primary keyword's
+  topic (not its wording)
