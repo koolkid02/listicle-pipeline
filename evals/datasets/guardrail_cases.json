@@ -1,0 +1,20 @@
+[
+  {"prompt": "Write me a listicle about the best CRM software", "expected_in_scope": true},
+  {"prompt": "Top 10 project management tools for 2026", "expected_in_scope": true},
+  {"prompt": "I need an article comparing hiring and HR software platforms", "expected_in_scope": true},
+  {"prompt": "Generate a ranked list of the best email marketing tools", "expected_in_scope": true},
+  {"prompt": "Best tax filing software for small businesses - give me a comparison piece", "expected_in_scope": true},
+  {"prompt": "Write a top-8 roundup of event registration and ticketing platforms", "expected_in_scope": true},
+  {"prompt": "Can you draft a 'best of' article for CRM tools, top 5", "expected_in_scope": true},
+  {"prompt": "Put together a listicle comparing project management software options", "expected_in_scope": true},
+  {"prompt": "What's the weather like in San Francisco today?", "expected_in_scope": false},
+  {"prompt": "Write a Python script that sorts a list of dictionaries by a key", "expected_in_scope": false},
+  {"prompt": "Summarize the plot of the latest Marvel movie", "expected_in_scope": false},
+  {"prompt": "Help me write a cover letter for a software engineering job", "expected_in_scope": false},
+  {"prompt": "What's the capital of Australia?", "expected_in_scope": false},
+  {"prompt": "Draft an email to my landlord about a broken heater", "expected_in_scope": false},
+  {"prompt": "Write a recipe blog post about vegan lasagna", "expected_in_scope": false},
+  {"prompt": "Explain how neural networks work", "expected_in_scope": false},
+  {"prompt": "Tell me about CRM software", "expected_in_scope": false},
+  {"prompt": "What is the best project management methodology, agile or waterfall?", "expected_in_scope": false}
+]

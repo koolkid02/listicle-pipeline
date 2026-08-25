@@ -6,3 +6,8 @@ __pycache__/
 output/*.md
 output/*.json
 !output/.gitkeep
+
+evals/results/*.json
+evals/results/logs/*.jsonl
+!evals/results/.gitkeep
+!evals/results/logs/.gitkeep

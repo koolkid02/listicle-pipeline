@@ -16,3 +16,9 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "llm_eval: calls the real OpenAI API against golden datasets; excluded by default, run with `pytest -m llm_eval`",
+]
+addopts = "-m 'not llm_eval'"

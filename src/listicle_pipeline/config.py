@@ -1,4 +1,6 @@
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -25,8 +27,22 @@ PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output"
 
 
+_active_callbacks: ContextVar[list | None] = ContextVar("_active_callbacks", default=None)
+
+
+@contextmanager
+def use_callbacks(callbacks: list):
+    """Install LangChain callbacks (e.g. for observability) on every get_llm() call
+    made within this context, without threading a param through every node."""
+    token = _active_callbacks.set(callbacks)
+    try:
+        yield
+    finally:
+        _active_callbacks.reset(token)
+
+
 def get_llm(temperature: float) -> ChatOpenAI:
-    return ChatOpenAI(model=MODEL_NAME, temperature=temperature)
+    return ChatOpenAI(model=MODEL_NAME, temperature=temperature, callbacks=_active_callbacks.get())
 
 
 def load_prompt(name: str) -> str:
