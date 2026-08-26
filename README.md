@@ -69,7 +69,29 @@ User prompt
       └────────┬──────────┘        └──────────────────┘
                │ pass
                ▼
-        To summariser → formatter → publishable draft
+      ┌───────────────────────┐
+      │ Summariser              │
+      │ Send fan-out: 1 parallel│
+      │ LLM call per approved   │
+      │ company                 │
+      └───────────┬────────────┘
+                  ▼
+     ┌─────────────┬──────────────────┬───────────────┐
+     ▼             ▼                  ▼
+┌───────────┐ ┌─────────────────┐ ┌─────────────┐
+│ Title/dek/ │ │ Buying-criteria  │ │ FAQ prose    │
+│ intro (LLM)│ │ prose (LLM)      │ │ (LLM)        │
+└─────┬──────┘ └────────┬─────────┘ └──────┬───────┘
+      └────────────────┼────────────────────┘
+                        ▼
+             ┌─────────────────────────┐
+             │ Assemble draft             │
+             │ Deterministic: comparison  │
+             │ table + company sections,  │
+             │ no LLM                     │
+             └─────────────┬─────────────┘
+                            ▼
+                   Publishable draft
 ```
 
 **Design principle:** every guardrail failure and every HITL rejection routes back to the *same* scope guardrail rather than each having its own dead-end or its own recovery path. One re-entry point, one thing to build and test, instead of three different failure flows.

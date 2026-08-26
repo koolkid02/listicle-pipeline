@@ -11,3 +11,6 @@ evals/results/*.json
 evals/results/logs/*.jsonl
 !evals/results/.gitkeep
 !evals/results/logs/.gitkeep
+*.docx
+*.pptx
+*.pdf
