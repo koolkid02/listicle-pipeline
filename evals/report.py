@@ -33,6 +33,7 @@ def build_report(
     intent_results: list[tuple[str, str]],
     groundedness_results: list[tuple[str, bool, list[str]]],
     log_path: Path,
+    placement_results: list[tuple[str, dict]] | None = None,
 ) -> dict:
     report: dict = {"run_id": run_id, "git_sha": _git_sha()}
 
@@ -55,6 +56,26 @@ def build_report(
                 for cid, ok, violations in groundedness_results
                 if not ok
             ],
+        }
+
+    if placement_results:
+        n = len(placement_results)
+        lexical_in_title_rate = sum(1 for _, m in placement_results if m["lexical_in_title"]) / n
+        lexical_in_first_100_words_rate = (
+            sum(1 for _, m in placement_results if m["lexical_in_first_100_words"]) / n
+        )
+        total_semantic = sum(m["semantic_used"] + m["semantic_missing"] for _, m in placement_results)
+        used_semantic = sum(m["semantic_used"] for _, m in placement_results)
+        semantic_coverage = used_semantic / total_semantic if total_semantic else 0.0
+        intent_in_faq_rate = sum(1 for _, m in placement_results if m["intent_terms_in_faq"] > 0) / n
+
+        report["placement"] = {
+            "n": n,
+            "lexical_in_title_rate": lexical_in_title_rate,
+            "lexical_in_first_100_words_rate": lexical_in_first_100_words_rate,
+            "semantic_coverage": semantic_coverage,
+            "intent_in_faq_rate": intent_in_faq_rate,
+            "per_case": [{"case_id": cid, **metrics} for cid, metrics in placement_results],
         }
 
     log_entries = observability.read_log(log_path)
@@ -90,6 +111,22 @@ def format_summary_table(report: dict) -> str:
         lines.append(f"\nGroundedness (n={gr['n']}): pass_rate={gr['pass_rate']:.2f}")
         for failure in gr["failures"]:
             lines.append(f"    FAIL {failure['case_id']}: {failure['violations']}")
+
+    if "placement" in report:
+        p = report["placement"]
+        lines.append(
+            f"\nPlacement (n={p['n']}): lexical_in_title={p['lexical_in_title_rate']:.2f} "
+            f"lexical_in_first_100_words={p['lexical_in_first_100_words_rate']:.2f} "
+            f"semantic_coverage={p['semantic_coverage']:.2f} "
+            f"intent_in_faq={p['intent_in_faq_rate']:.2f}"
+        )
+        for case in p["per_case"]:
+            lines.append(
+                f"    {case['case_id']}: title={case['lexical_in_title']} "
+                f"first100={case['lexical_in_first_100_words']} "
+                f"semantic={case['semantic_used']}/{case['semantic_used'] + case['semantic_missing']} "
+                f"intent_in_faq={case['intent_terms_in_faq']}"
+            )
 
     if report.get("observability"):
         lines.append("\nObservability (per stage):")

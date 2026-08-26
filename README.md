@@ -219,22 +219,16 @@ inline draft editing, and automated SEO placement checks surfaced as pass/fail b
 as not-yet-built. See `docs/architecture.md` for exactly how this reuses the same core
 node functions as the CLI without duplicating any pipeline logic.
 
-**Still not built:**
-- **Live Tavily / G2 API integration** — always explicitly scoped to a later phase
-  (§3), and still is. Every run, CLI or web, uses only the synthetic dataset.
-- **Decay-weighted default ranking** — still just a raw `days_since_update` field and a
-  simple rating-descending sort; the `weight = e^(-days_since_update / half_life)`
-  scoring design from §4a was never implemented.
-- **Automated placement-check retry loop** — the SEO checks themselves run and are
-  shown to the human (`api/seo_checks.py`), but a failing check doesn't automatically
-  feed a targeted correction back into the formatter for regeneration; a human sees the
-  red badge and decides what to do.
-- **A real post-draft review workflow** — "Send for review" (§5, checkpoint 3) is a
-  client-side status marker, not a durable record, a reviewer role, or a notification.
-- **Company-level keyword personalization, review-text mining, multi-operator HITL
-  conflict handling, and routable/shareable per-stage URLs** — all explicitly named as
-  future scope when they came up (§7, and the frontend spec's own open questions) and
-  none of them were built.
+**Built — evals** (`evals/`, `tests/evals/`): guardrail/intent classification
+accuracy, structural groundedness checks on the summariser/formatter prompts' own
+stated constraints, and keyword-placement pass rates all run as an offline eval suite
+(`uv run pytest -m llm_eval`) against golden test cases, rolling into one aggregate
+report with per-stage latency/token/error observability — deselected by default so a
+plain `uv run pytest` never makes a live LLM call.
+
+**Still not built:** live Tavily/G2 retrieval, decay-weighted ranking, an automated
+placement-check retry loop, a real post-draft review workflow, and a handful of other
+items named as future scope when they came up — see §7 below for the full list.
 
 ---
 
@@ -248,12 +242,28 @@ node functions as the CLI without duplicating any pipeline logic.
 - **Schema depth / data enrichment:** the current DB schema (`positioning`, `starting_price`, `aggregated_rating`, `review_count`, `what_it_does_well`, `gaps`, `best_for`) only supports generic "what to look for" framing — pricing model, rating/review volume, a couple of strengths, a couple of limitations, who it's best for. It can't surface category-specific evaluation dimensions — e.g. for event registration/ticketing, things like branding depth, agenda personalization, push targeting, matchmaking, in-app engagement, onsite integration, CRM sync, or analytics export. Those aren't fields in the schema today; they'd have to be invented or forced out of the free-text `what_it_does_well`/`gaps` bullets, which isn't reliable. A future pass would need either category-specific structured fields (schema-per-category, harder to keep generic) or a richer enrichment step — pulling feature-level detail (plausibly via the Phase 2 Tavily integration) and tagging it against a per-category rubric of buyer-relevant dimensions, rather than relying on generic bullets to imply depth they don't have.
 - **Video links / rich media:** no field currently captures demo videos, product walkthroughs, or embeddable media — the schema is text-and-numbers only. A future pass could add a `video_url` (or list of them) per company, sourced either manually or via live retrieval, to let the formatter embed a demo clip in that company's section rather than relying purely on prose.
 - **Product personalization / featured placement:** there's no mechanism today to showcase a specific vendor (e.g. Company, if company is the requesting party) more prominently than a plain ranked entry — no "featured" flag, no boosted section treatment, no separate callout block in the formatter. A future pass would need an explicit, disclosed mechanism for this (e.g. a `featured: true` field plus formatter logic for a highlighted card/section) so any such boosting is a visible, auditable design choice rather than silently skewing the ranking that §5 defines as a human decision.
--**Compliance layer:** no compliance/legal review step exists in the pipeline today — e.g. checking competitor claims for accuracy before publish, disclosure requirements if any vendor gets featured/boosted placement, defamation risk in `gaps` bullets, trademark/logo usage for competitor names, or region-specific advertising/review regulations. This isn't designed yet because the underlying **business logic needs to come from stakeholders first** — what counts as an approved claim, what disclosure language is required, who signs off — before it can be turned into a pipeline stage (likely another HITL checkpoint, similar in shape to §5, rather than an automated check).
+- **Compliance layer:** no compliance/legal review step exists in the pipeline today — e.g. checking competitor claims for accuracy before publish, disclosure requirements if any vendor gets featured/boosted placement, defamation risk in `gaps` bullets, trademark/logo usage for competitor names, or region-specific advertising/review regulations. This isn't designed yet because the underlying **business logic needs to come from stakeholders first** — what counts as an approved claim, what disclosure language is required, who signs off — before it can be turned into a pipeline stage (likely another HITL checkpoint, similar in shape to §5, rather than an automated check).
 - **Real review summarization vs. aggregate-only:** today `aggregated_rating` and `review_count` are the only review signal — a single number and a count, no text. This is different from (and a prerequisite gap ahead of) the review-level mining idea above: before themes can be mined, the pipeline needs access to the actual review corpus per company (via live G2 API or another source) instead of a pre-aggregated score, since a synthetic DB has no raw reviews to summarize from in the first place.
 - **Decay-weighted default ranking** — still just a raw `days_since_update` field and a
   simple rating-descending sort; the `weight = e^(-days_since_update / half_life)`
   scoring design from §4a was never implemented.
- 
+- **Live Tavily / G2 API integration** — always explicitly scoped to a later phase
+  (§3), and still is. Every run, CLI or web, uses only the synthetic dataset.
+- **Automated placement-check retry loop** — the SEO checks run and are shown to the
+  human (`api/seo_checks.py`), but a failing check doesn't automatically feed a
+  targeted correction back into the formatter for regeneration; a human sees the red
+  badge and decides what to do. Deliberately not built as a live production feature —
+  instead, how often drafts actually pass these checks is now *measured* via
+  `evals/` (`tests/evals/test_placement_eval.py`, rolled into the same aggregate
+  report as guardrail/intent/groundedness), since auto-retrying inside a live request
+  adds real cost/latency/loop-termination complexity for a soft quality signal, not a
+  hard correctness contract.
+- **A real post-draft review workflow** — "Send for review" (§5, checkpoint 3) is a
+  client-side status marker, not a durable record, a reviewer role, or a notification.
+- **Multi-operator HITL conflict handling and routable/shareable per-stage URLs** —
+  named as open questions in the frontend spec and never built; this is a single-
+  operator tool with in-memory-only pipeline state.
+
 ---
 
 ## 8. Files in this submission
@@ -285,7 +295,8 @@ Listicle Project/
 ├── frontend/                     Vite + React + TypeScript web app — `npm run dev`
 │   └── src/screens/, components/, state/    the 5 screens, inline editing, the reducer state machine
 ├── tests/                        pytest — deterministic unit tests (shared core + `api/`)
-├── evals/                        evaluation framework — accuracy/precision/recall and groundedness
+│   └── evals/                     LLM eval suite — `uv run pytest -m llm_eval`, deselected by default
+├── evals/                        eval framework — accuracy/precision/recall, groundedness, placement checks
 │   ├── datasets/                  golden test cases for guardrail/intent classification
 │   └── results/                   timestamped eval run output
 ├── output/                       generated drafts, written by the CLI (gitignored)

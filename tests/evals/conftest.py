@@ -23,7 +23,12 @@ def eval_callback_handler():
 
 
 def pytest_sessionfinish(session, exitstatus):
-    if not (collector.guardrail_results or collector.intent_results or collector.groundedness_results):
+    if not (
+        collector.guardrail_results
+        or collector.intent_results
+        or collector.groundedness_results
+        or collector.placement_results
+    ):
         return
     report = build_report(
         run_id=RUN_ID,
@@ -31,6 +36,7 @@ def pytest_sessionfinish(session, exitstatus):
         intent_results=collector.intent_results,
         groundedness_results=collector.groundedness_results,
         log_path=LOG_PATH,
+        placement_results=collector.placement_results,
     )
     print("\n" + format_summary_table(report))
     out_path = write_report(report)
