@@ -1,4 +1,4 @@
-# SEO Listicle Generation Pipeline — Design README
+# SEO Listicle Generation Pipeline 
 
 **Task:** Take a primary + secondary keyword input and produce a 95%-ready SEO listicle draft (e.g. *"Top X Event Registration & Ticketing Softwares"*), generalized across unrelated software categories.
 **Status:** Fully built and running end-to-end, as **two entry points sharing one
