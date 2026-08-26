@@ -1,0 +1,88 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 880px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toolCard {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.toolMeta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.keywordGroup h3 {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.keywordChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.kwLexical,
+.kwSemantic,
+.kwIntent {
+  font-size: 0.75rem;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+}
+
+.kwLexical {
+  color: var(--auto);
+  border-color: color-mix(in srgb, var(--auto) 40%, var(--line-soft));
+}
+
+.kwSemantic {
+  color: #9b8cf0;
+  border-color: color-mix(in srgb, #9b8cf0 40%, var(--line-soft));
+}
+
+.kwIntent {
+  color: var(--human);
+  border-color: color-mix(in srgb, var(--human) 40%, var(--line-soft));
+}
+
+.continue {
+  align-self: flex-start;
+  background: var(--auto);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-5);
+  font-weight: 600;
+  cursor: pointer;
+}
