@@ -14,17 +14,16 @@ export function RequestScreen({
   dispatch: Dispatch<PipelineAction>;
 }) {
   const [primaryKeyword, setPrimaryKeyword] = useState(state.primaryKeyword);
-  const [secondaryKeyword, setSecondaryKeyword] = useState(state.secondaryKeyword);
   const [selectedChipId, setSelectedChipId] = useState<string | null>(null);
   const classifyAction = useAsyncAction(classify);
 
   const canSubmit = primaryKeyword.trim().length > 0 || selectedChipId !== null;
 
   async function submit() {
-    dispatch({ type: "SET_REQUEST_FIELDS", primaryKeyword, secondaryKeyword });
+    dispatch({ type: "SET_REQUEST_FIELDS", primaryKeyword, secondaryKeyword: "" });
     const result = await classifyAction.run({
       primary_keyword: primaryKeyword.trim(),
-      secondary_keyword: secondaryKeyword.trim() || null,
+      secondary_keyword: null,
       manual_category_id: selectedChipId,
     });
     if (result) {
@@ -39,22 +38,13 @@ export function RequestScreen({
       <h1>What listicle do you need?</h1>
 
       <div className={styles.field}>
-        <label htmlFor="primary-keyword">Primary keyword</label>
-        <input
-          id="primary-keyword"
+        <label htmlFor="request-text">Your request</label>
+        <textarea
+          id="request-text"
+          className={styles.textarea}
           value={primaryKeyword}
           onChange={(e) => setPrimaryKeyword(e.target.value)}
-          placeholder="e.g. event registration software"
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label htmlFor="secondary-keyword">Secondary keyword (optional)</label>
-        <input
-          id="secondary-keyword"
-          value={secondaryKeyword}
-          onChange={(e) => setSecondaryKeyword(e.target.value)}
-          placeholder="e.g. ticketing platform"
+          placeholder='Please let me know your request — e.g. "top event registration and ticketing software"'
         />
       </div>
 

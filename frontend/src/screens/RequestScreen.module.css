@@ -25,6 +25,17 @@
   font-size: 1rem;
 }
 
+.textarea {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: 1rem;
+  font-family: inherit;
+  min-height: 4.5em;
+  resize: vertical;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;

@@ -1,5 +1,7 @@
 import { useMemo, useState, type Dispatch } from "react";
 import { generateDraft } from "../api/client";
+import { EditableHtml } from "../components/EditableHtml";
+import { EditableText } from "../components/EditableText";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { SeoCheckBadges } from "../components/SeoCheckBadges";
 import { useAsyncAction } from "../lib/useAsyncAction";
@@ -32,6 +34,9 @@ export function DraftScreen({
 
   async function regenerate() {
     if (!state.selectedCategoryId) return;
+    if (state.draftEdited && !window.confirm("Regenerating will discard your edits. Continue?")) {
+      return;
+    }
     const result = await regenerateAction.run({
       category_id: state.selectedCategoryId,
       selected_tool_ids_in_order: state.includedToolIds,
@@ -81,15 +86,37 @@ export function DraftScreen({
         <button type="button" onClick={copyAsHtml}>
           {copied === "html" ? "Copied!" : "Copy as HTML"}
         </button>
+        <button
+          type="button"
+          className={styles.sendButton}
+          onClick={() => dispatch({ type: "SEND_FOR_REVIEW" })}
+          disabled={state.sentForReview}
+        >
+          {state.sentForReview ? "Sent for review ✓" : "Send for review"}
+        </button>
+        {state.sentForReview && state.sentAt && (
+          <span className={styles.sentCaption}>
+            Sent {new Date(state.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+          </span>
+        )}
       </div>
 
       {regenerateAction.error && <ErrorBanner message={regenerateAction.error} onRetry={regenerate} />}
 
       <article className={styles.article}>
-        <h1>{draft.title}</h1>
-        <p className={styles.metaDescription}>{draft.meta_description}</p>
+        <h1>
+          <EditableText value={draft.title} ariaLabel="title" onSave={(value) => dispatch({ type: "EDIT_TITLE", value })} />
+        </h1>
+        <p className={styles.metaDescription}>
+          <EditableText
+            value={draft.meta_description}
+            ariaLabel="meta description"
+            multiline
+            onSave={(value) => dispatch({ type: "EDIT_META_DESCRIPTION", value })}
+          />
+        </p>
 
-        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(draft.lede_html) }} />
+        <EditableHtml html={draft.lede_html} ariaLabel="intro" onSave={(html) => dispatch({ type: "EDIT_LEDE", html })} />
 
         <table className={styles.table}>
           <thead>
@@ -118,11 +145,19 @@ export function DraftScreen({
         {draft.sections.map((s) => (
           <section className={styles.section} key={s.tool_id}>
             <h2>{s.company_name}</h2>
-            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.body_html) }} />
+            <EditableHtml
+              html={s.body_html}
+              ariaLabel={`${s.company_name} summary`}
+              onSave={(html) => dispatch({ type: "EDIT_SECTION", toolId: s.tool_id, field: "body_html", html })}
+            />
             {s.gaps_html && (
               <>
                 <p className={styles.gapsHeading}>Where it falls short</p>
-                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.gaps_html) }} />
+                <EditableHtml
+                  html={s.gaps_html}
+                  ariaLabel={`${s.company_name} gaps`}
+                  onSave={(html) => dispatch({ type: "EDIT_SECTION", toolId: s.tool_id, field: "gaps_html", html })}
+                />
               </>
             )}
             <p>
@@ -135,10 +170,23 @@ export function DraftScreen({
 
         <section className={styles.section}>
           <h2>FAQ</h2>
-          {draft.faq.map((f) => (
-            <div className={styles.faqItem} key={f.question}>
-              <h3>{f.question}</h3>
-              <p>{f.answer}</p>
+          {draft.faq.map((f, index) => (
+            <div className={styles.faqItem} key={index}>
+              <h3>
+                <EditableText
+                  value={f.question}
+                  ariaLabel={`FAQ question ${index + 1}`}
+                  onSave={(value) => dispatch({ type: "EDIT_FAQ", index, field: "question", value })}
+                />
+              </h3>
+              <p>
+                <EditableText
+                  value={f.answer}
+                  ariaLabel={`FAQ answer ${index + 1}`}
+                  multiline
+                  onSave={(value) => dispatch({ type: "EDIT_FAQ", index, field: "answer", value })}
+                />
+              </p>
             </div>
           ))}
         </section>

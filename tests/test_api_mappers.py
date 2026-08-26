@@ -10,7 +10,7 @@ from api.mappers import (
     map_retrieval_response,
     slugify,
 )
-from api.seo_checks import compute_seo_checks
+from api.seo_checks import _keyword_present, _text_words, compute_seo_checks
 from src.listicle_pipeline.state import (
     Company,
     CompanySection,
@@ -193,3 +193,19 @@ def test_compute_seo_checks_detects_placement():
     assert checks.keyword_placements.intent_terms_in_faq == 1
     assert checks.heading_structure_valid is True
     assert checks.word_count > 0
+
+
+def test_keyword_present_matches_paraphrased_wording():
+    # "best email marketing software" paraphrased as "the best email marketing
+    # tools" - shares "email"/"marketing" (>= half of the significant words) but not
+    # the exact phrase or "software". Real generated prose paraphrases like this
+    # constantly, so exact substring matching used to fail nearly every draft.
+    text_words = _text_words("The best email marketing tools available today.")
+    assert _keyword_present("best email marketing software", text_words) is True
+
+
+def test_keyword_present_rejects_incidental_overlap():
+    # Only "software" overlaps (one word, below the ceil(n/2) threshold for a
+    # 4-significant-word phrase) - genuinely unrelated text should still fail.
+    text_words = _text_words("This tax software helps you file returns quickly.")
+    assert _keyword_present("best email marketing software", text_words) is False

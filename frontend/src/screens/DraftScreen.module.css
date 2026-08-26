@@ -20,6 +20,26 @@
   font-family: var(--font-ui);
 }
 
+.actions button.sendButton {
+  background: var(--human);
+  border-color: var(--human);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+.sendButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.sentCaption {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 .article {
   background: var(--paper);
   color: #232016;
