@@ -119,7 +119,8 @@ narrative walkthrough of what's shared vs. entry-point-specific.
 
 | Stage | What it does | Nature |
 |---|---|---|
-| Scope guardrail | Confirms the request is actually a listicle-generation task ("write me a listicle about X") and not something else | LLM classification, cheap, first line of defense |
+| Scope guar
+drail | Confirms the request is actually a listicle-generation task ("write me a listicle about X") and not something else | LLM classification, cheap, first line of defense |
 | Intent & confidence check | Classifies the request against the 6 known categories, extracts the primary keyword, returns a confidence score | LLM classification against a closed set of 6 — deliberately *not* an open embedding search, since a fixed dictionary of 6 categories is more debuggable than nearest-neighbor matching at this scale |
 | Tools DB query | `SELECT * FROM tools WHERE category = X` | Deterministic, boring on purpose — no live search, no hallucination risk |
 | LLM keyword generation | Three parallel live LLM calls off the primary keyword — lexical, semantic, intent — each with its own prompt and temperature | **Live, not cached.** Runs at request time using the project's LLM API key. See §4b |
@@ -134,9 +135,7 @@ narrative walkthrough of what's shared vs. entry-point-specific.
 
 | Source | Role | Why |
 |---|---|---|
-| G2 | Aggregate rating signal | Has a real public API (`data.g2.com`), but not integrated for this build — mimicked via a curated synthetic DB with the same shape, so swapping in the live API later doesn't require restructuring |
-| Capterra | Aggregate rating signal | **No public API for product/review data** exists (their only public API is an unrelated ad-click analytics endpoint for vendors) — confirmed by direct research, also confirmed scraping is blocked (`g2.com/products/.../reviews` returned "Failed to fetch url" via Tavily extract) |
-| Tavily | Live pricing + feature detail + citation URLs | Explicitly scoped to **Phase 2**, not used in this build |
+| G2/Canterra Synthetic Data  | Aggregate rating signal | Has a real public API (`data.g2.com`), but not integrated for this build — mimicked via a curated synthetic DB with the same shape, so swapping in the live API later doesn't require restructuring |
 
 **Explicitly out of scope:** review-level mining (pulling and summarizing individual reviewer text). Only aggregate rating + review count is captured. Review-text summarization is a Phase 2 idea (see §7).
 
@@ -156,8 +155,6 @@ Fields: `company_name`, `category`, `positioning`, `starting_price`, `aggregated
 
 ### 4b. Keyword generation — live LLM calls, not a database
 
-**Decision:** no `keyword_db`. With a project LLM API key available, keeping keyword generation as a precomputed, cached lookup table was a workaround for not having live access — it isn't the better design once live calls are on the table. Keywords are generated fresh at request time.
-
 Three relationship types per request, each its own live LLM call, fired in parallel, off the primary keyword that came out of intent classification:
 
 | Type | Purpose | Temperature | Why that temperature |
@@ -168,7 +165,7 @@ Three relationship types per request, each its own live LLM call, fired in paral
 
 Each call sends a fixed `prompt_template` (auditable, swappable independent of code) with the resolved category filled in, and returns structured JSON that gets parsed straight into the retrieval output — no intermediate storage.
 
-**Tradeoff, stated honestly:** this trades the old design's speed and reproducibility (a cached lookup can't fail or drift) for freshness and flexibility (keywords can react to the actual request instead of being frozen at whatever they were when the DB was last built). It also adds three live API calls, and their latency, cost, and failure modes, to every single article request instead of once per category. Error handling for a failed or malformed keyword call becomes part of the runtime path, not something you can pre-validate offline.
+**Tradeoff:**  It adds three live API calls, and their latency, cost, and failure modes, to every single article request instead of once per category. Error handling for a failed or malformed keyword call becomes part of the runtime path, not something you can pre-validate offline.
 
 **At request time**, the `Tools DB query` stays a plain, boring, deterministic read filtered by category. Keyword generation is the one genuinely live, non-deterministic step in retrieval, which is why it's drawn as its own parallel branch rather than folded into the same box as the DB query.
 
