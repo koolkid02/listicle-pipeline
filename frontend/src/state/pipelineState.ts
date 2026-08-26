@@ -42,6 +42,7 @@ export type PipelineAction =
   | { type: "SET_FINAL_COUNT"; count: number }
   | { type: "DRAFT_SUCCESS"; result: GenerateDraftResponse }
   | { type: "EDIT_TITLE"; value: string }
+  | { type: "EDIT_SLUG"; value: string }
   | { type: "EDIT_META_DESCRIPTION"; value: string }
   | { type: "EDIT_LEDE"; html: string }
   | { type: "EDIT_SECTION"; toolId: string; field: "body_html" | "gaps_html"; html: string }
@@ -88,6 +89,15 @@ export function pipelineReducer(state: PipelineState, action: PipelineAction): P
       return {
         ...state,
         draft: { ...state.draft, title: action.value },
+        draftEdited: true,
+        sentForReview: false,
+        sentAt: null,
+      };
+    case "EDIT_SLUG":
+      if (!state.draft) return state;
+      return {
+        ...state,
+        draft: { ...state.draft, slug: action.value },
         draftEdited: true,
         sentForReview: false,
         sentAt: null,

@@ -49,6 +49,7 @@ export function DraftScreen({
     const parts = [
       `<h1>${draft!.title}</h1>`,
       `<p>${draft!.meta_description}</p>`,
+      `<p><em>URL slug: /${draft!.slug}</em></p>`,
       sanitizeHtml(draft!.lede_html),
     ];
     for (const s of draft!.sections) {
@@ -114,6 +115,11 @@ export function DraftScreen({
             multiline
             onSave={(value) => dispatch({ type: "EDIT_META_DESCRIPTION", value })}
           />
+        </p>
+
+        <p className={styles.slugLine}>
+          <span className={styles.slugLabel}>URL slug:</span> /
+          <EditableText value={draft.slug} ariaLabel="URL slug" onSave={(value) => dispatch({ type: "EDIT_SLUG", value })} />
         </p>
 
         <EditableHtml html={draft.lede_html} ariaLabel="intro" onSave={(html) => dispatch({ type: "EDIT_LEDE", html })} />
