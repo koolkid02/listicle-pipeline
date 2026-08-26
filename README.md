@@ -1,8 +1,15 @@
 # SEO Listicle Generation Pipeline — Design README
 
-**Project:** Zuddl, Lead Growth Engineering take-home
 **Task:** Take a primary + secondary keyword input and produce a 95%-ready SEO listicle draft (e.g. *"Top X Event Registration & Ticketing Softwares"*), generalized across unrelated software categories.
-**Status:** Architecture + synthetic data layer designed and built. Generation/formatting stages, human-in-the-loop tooling, and live retrieval are scoped but not yet implemented in code.
+**Status:** Fully built and running end-to-end, as **two entry points sharing one
+pipeline core** — a CLI (`main.py`) and a web app (FastAPI backend in `api/` + React
+frontend in `frontend/`). Scope guardrail, intent classification, retrieval, live
+keyword generation, human review, summariser, and formatter are all implemented; see
+`docs/architecture.md` for the as-built component and request-flow diagrams. §6 below
+has the full built-vs-not-built breakdown — the short version is that everything this
+document originally scoped as "designed, not yet coded" is now built **except** live
+Tavily/G2 retrieval, which was always explicitly deferred to a later phase and still is:
+this build runs entirely on the synthetic dataset.
 
 ---
 
@@ -67,6 +74,25 @@ User prompt
 
 **Design principle:** every guardrail failure and every HITL rejection routes back to the *same* scope guardrail rather than each having its own dead-end or its own recovery path. One re-entry point, one thing to build and test, instead of three different failure flows.
 
+> **Revised during build, based on live testing:** this held for the guardrail/
+> confidence-check loop, but a real HITL rejection routing all the way back to the
+> guardrail turned out to be bad UX in practice — a person rejecting a company
+> selection is almost never rejecting the category, just the selection, and typing
+> selection-style input ("all", "1-5") into a "restate your request" prompt got
+> misclassified as out-of-scope. The CLI's `human_review` reject path now loops back to
+> `human_review` itself instead (a separate, bounded retry cap), while the guardrail/
+> confidence loop is unchanged. See `docs/architecture.md` §1 for the current graph
+> shape, and `src/listicle_pipeline/graph.py` for the actual routing.
+
+This diagram is the pipeline as originally conceived. It's now built as **two separate
+orchestrations sharing one core** — the CLI graph above (with real cycles and a
+blocking terminal HITL step) and a stateless FastAPI backend (`api/`) that reuses the
+exact same node functions but wires them into two small cycle-free graphs, since HITL
+happens client-side in the web UI instead of as a blocking pipeline step. See
+[`docs/architecture.md`](./docs/architecture.md) for the as-built component diagram and
+a full request-flow sequence diagram, and [`docs/README.md`](./docs/README.md) for the
+narrative walkthrough of what's shared vs. entry-point-specific.
+
 ### Stage-by-stage
 
 | Stage | What it does | Nature |
@@ -77,8 +103,8 @@ User prompt
 | LLM keyword generation | Three parallel live LLM calls off the primary keyword — lexical, semantic, intent — each with its own prompt and temperature | **Live, not cached.** Runs at request time using the project's LLM API key. See §4b |
 | Retrieval output | Merges the DB query and the generated keywords into one JSON handoff object | Decouples summarizer from however retrieval happens under the hood (today: fixed DB + live LLM calls; later: Tavily + live G2 API for the company side) |
 | Human review (HITL) | Human adds/removes companies, sets final count, reorders, flags stale data | **Explicitly a human decision, not model judgment** — see §5 |
-| Summariser | Turns structured retrieval output into flowing prose per section | Not yet built |
-| Formatter | Slots prose into title / headings / table / FAQ / hyperlinks, runs SEO placement checks | Not yet built |
+| Summariser | Turns structured retrieval output into flowing prose per section | Built — `nodes/summariser.py`, one parallel LLM call per approved company |
+| Formatter | Slots prose into title / headings / table / FAQ / hyperlinks, runs SEO placement checks | Built — `nodes/formatter.py` (prose) + `api/seo_checks.py` (placement checks, web app only) |
 
 ---
 
@@ -128,34 +154,87 @@ Each call sends a fixed `prompt_template` (auditable, swappable independent of c
 
 ## 5. Human-in-the-loop checkpoints
 
-Two identified so far, both hard stops (pipeline pauses, does not proceed silently):
+Three checkpoints now, all built, in both the CLI and the web app (mechanics differ per
+surface — see below):
 
-1. **Scope / confidence guardrail failure** — if the request isn't clearly a listicle task, or the category match confidence is low, the agent states its allowed scope and asks the human to clarify, then re-enters at the same guardrail.
+1. **Scope / confidence guardrail failure** — if the request isn't clearly a listicle
+   task, or the category match confidence is low, the human is asked to clarify/pick a
+   category and re-enters at the same guardrail. CLI: `nodes/guardrail.py` /
+   `nodes/intent.py`'s `clarify`/`confirm`, blocking terminal `input()`. Web: the
+   Guardrail screen's inline category picker, re-submitting `POST /pipeline/classify`.
 2. **Post-retrieval review** — before data is locked in for drafting, a human:
    - Adds or removes candidate companies
    - Sets the final company count (top-5 vs top-8, etc.)
    - Reorders the list — **ranking is explicitly a human decision, not model judgment**
-   - Sanity-checks `last_updated` / pricing / ratings for anything stale enough to need a refresh
+   - Sanity-checks `last_updated` / pricing / ratings for anything stale enough to need
+     a refresh (staleness flagged at >30 days in the CLI, >60 days in the web UI)
 
-**Not yet designed:** a third checkpoint after drafting, for QA/humanization pass — this is an explicit brief requirement ("QA to humanise the writing") not yet addressed in this design.
+   CLI: `nodes/human_review.py`, blocking terminal input; a rejection loops back to
+   this same node for another pass at the selection (not back to the guardrail — see
+   the callout in §2). Web: the Review screen, a live editable table with an
+   include/exclude toggle, reorder buttons, and a final-count stepper per candidate —
+   there's no separate approve/reject round trip in the browser, since the operator's
+   edits *are* the review.
+3. **Post-draft QA/humanize pass** — the brief's "QA to humanise the writing"
+   requirement. Built as two pieces, deliberately lighter than a full reviewer
+   workflow: **inline editing** on every section of the generated draft (title, meta
+   description, intro, each company's summary/gaps, each FAQ item —
+   `frontend/src/components/EditableText.tsx` / `EditableHtml.tsx`), which is the
+   actual mechanism for a human to humanize the copy; and a **"Send for review"**
+   button that's a client-side status marker only (a timestamp shown next to the
+   button, cleared the moment the draft is edited or regenerated again) — no backend
+   persistence, no reviewer role, no notification. A real review workflow (a second
+   person picking this up, approving/rejecting with comments, a durable record of what
+   was sent) is still not built.
 
 ---
 
-## 6. What's built vs. what's designed-but-not-coded
+## 6. What's built vs. what's still not built
 
-**Built:**
-- `synthetic_tool_db.json` / `.csv` — 103 synthetic companies across 6 categories
-- Full pipeline flow design (this doc + diagram)
+This section was written when only the data layer existed. Nearly everything it once
+listed as "designed, not yet coded" is now built — kept here (rewritten) so it's still
+useful as a status check rather than misleading.
 
-**Designed, not yet coded:**
-- Intent classification + confidence-check LLM call
-- Scope guardrail LLM call
-- Live keyword generation calls (lexical / semantic / intent, 3 parallel prompts per request) — prompt templates and temperatures are designed (§4b); wiring them to the project's LLM API key is the next build step
-- Decay-weighted default ranking for companies (currently just a raw `days_since_update` field, no computed score)
-- HITL review UI/interface
-- Summariser (structured data → prose)
-- Formatter (prose → title/headings/table/FAQ/hyperlinks + automated SEO placement checks)
-- Live Tavily / G2 API integration (Phase 2, company data only)
+**Built — shared pipeline core** (`src/listicle_pipeline/`, used by both entry points):
+- Scope guardrail LLM call (`nodes/guardrail.py`)
+- Intent classification + confidence-check LLM call (`nodes/intent.py`)
+- Deterministic Tools DB query (`db.py`, `nodes/db_query.py`)
+- Live keyword generation — lexical / semantic / intent, 3 parallel LLM calls per
+  request, exactly the prompts and temperatures designed in §4b (`nodes/keywords.py`)
+- Retrieval merge (`nodes/retrieval_merge.py`)
+- Summariser — per-company prose, one parallel LLM call per approved company via a
+  dynamic LangGraph `Send` fan-out (`nodes/summariser.py`)
+- Formatter — title/dek/intro, buying-criteria, and FAQ prose (3 parallel LLM calls),
+  plus fully deterministic assembly of the comparison table and company sections that
+  never trusts an LLM to reproduce a price or rating verbatim (`nodes/formatter.py`)
+
+**Built — CLI** (`main.py`, `graph.py`): the full pipeline end-to-end in one process,
+including the blocking-terminal HITL step, writing the finished draft to
+`output/<slug>.json`.
+
+**Built — web app** (`api/` + `frontend/`): a FastAPI backend implementing a 3-endpoint
+REST contract, and a 5-screen React frontend with a fully interactive HITL review table,
+inline draft editing, and automated SEO placement checks surfaced as pass/fail badges
+(`api/seo_checks.py`) — the "automated SEO placement checks" this section used to list
+as not-yet-built. See `docs/architecture.md` for exactly how this reuses the same core
+node functions as the CLI without duplicating any pipeline logic.
+
+**Still not built:**
+- **Live Tavily / G2 API integration** — always explicitly scoped to a later phase
+  (§3), and still is. Every run, CLI or web, uses only the synthetic dataset.
+- **Decay-weighted default ranking** — still just a raw `days_since_update` field and a
+  simple rating-descending sort; the `weight = e^(-days_since_update / half_life)`
+  scoring design from §4a was never implemented.
+- **Automated placement-check retry loop** — the SEO checks themselves run and are
+  shown to the human (`api/seo_checks.py`), but a failing check doesn't automatically
+  feed a targeted correction back into the formatter for regeneration; a human sees the
+  red badge and decides what to do.
+- **A real post-draft review workflow** — "Send for review" (§5, checkpoint 3) is a
+  client-side status marker, not a durable record, a reviewer role, or a notification.
+- **Company-level keyword personalization, review-text mining, multi-operator HITL
+  conflict handling, and routable/shareable per-stage URLs** — all explicitly named as
+  future scope when they came up (§7, and the frontend spec's own open questions) and
+  none of them were built.
 
 ---
 
@@ -166,12 +245,49 @@ Two identified so far, both hard stops (pipeline pauses, does not proceed silent
 - **Company-level keyword personalization:** keyword generation is category-level only for now. A future pass could generate lightweight per-company keyword variants (`"{company} pricing"`, `"{company} vs {competitor}"`) as part of the same live call, without needing a separate database.
 - **Data freshness at scale:** with live retrieval (Tavily/G2 API) instead of a static synthetic DB, staleness handling becomes a real operational concern for the company data — the decay-weighted scoring design in §4a becomes necessary rather than optional.
 - **Three live LLM calls per article request** for keyword generation is cheap at low request volume; at scale this is the pipeline's main latency and cost driver, since every request pays for fresh generation instead of a cache hit. Worth revisiting caching per (category, request-shape) if request volume grows, without going back to a single static precomputed table.
-
+- **Schema depth / data enrichment:** the current DB schema (`positioning`, `starting_price`, `aggregated_rating`, `review_count`, `what_it_does_well`, `gaps`, `best_for`) only supports generic "what to look for" framing — pricing model, rating/review volume, a couple of strengths, a couple of limitations, who it's best for. It can't surface category-specific evaluation dimensions — e.g. for event registration/ticketing, things like branding depth, agenda personalization, push targeting, matchmaking, in-app engagement, onsite integration, CRM sync, or analytics export. Those aren't fields in the schema today; they'd have to be invented or forced out of the free-text `what_it_does_well`/`gaps` bullets, which isn't reliable. A future pass would need either category-specific structured fields (schema-per-category, harder to keep generic) or a richer enrichment step — pulling feature-level detail (plausibly via the Phase 2 Tavily integration) and tagging it against a per-category rubric of buyer-relevant dimensions, rather than relying on generic bullets to imply depth they don't have.
+- **Video links / rich media:** no field currently captures demo videos, product walkthroughs, or embeddable media — the schema is text-and-numbers only. A future pass could add a `video_url` (or list of them) per company, sourced either manually or via live retrieval, to let the formatter embed a demo clip in that company's section rather than relying purely on prose.
+- **Product personalization / featured placement:** there's no mechanism today to showcase a specific vendor (e.g. Company, if company is the requesting party) more prominently than a plain ranked entry — no "featured" flag, no boosted section treatment, no separate callout block in the formatter. A future pass would need an explicit, disclosed mechanism for this (e.g. a `featured: true` field plus formatter logic for a highlighted card/section) so any such boosting is a visible, auditable design choice rather than silently skewing the ranking that §5 defines as a human decision.
+-**Compliance layer:** no compliance/legal review step exists in the pipeline today — e.g. checking competitor claims for accuracy before publish, disclosure requirements if any vendor gets featured/boosted placement, defamation risk in `gaps` bullets, trademark/logo usage for competitor names, or region-specific advertising/review regulations. This isn't designed yet because the underlying **business logic needs to come from stakeholders first** — what counts as an approved claim, what disclosure language is required, who signs off — before it can be turned into a pipeline stage (likely another HITL checkpoint, similar in shape to §5, rather than an automated check).
+- **Real review summarization vs. aggregate-only:** today `aggregated_rating` and `review_count` are the only review signal — a single number and a count, no text. This is different from (and a prerequisite gap ahead of) the review-level mining idea above: before themes can be mined, the pipeline needs access to the actual review corpus per company (via live G2 API or another source) instead of a pre-aggregated score, since a synthetic DB has no raw reviews to summarize from in the first place.
+- **Decay-weighted default ranking** — still just a raw `days_since_update` field and a
+  simple rating-descending sort; the `weight = e^(-days_since_update / half_life)`
+  scoring design from §4a was never implemented.
+ 
 ---
 
 ## 8. Files in this submission
 
-| File | Contents |
-|---|---|
-| `synthetic_tool_db.json` / `.csv` | Company-level reference data, 103 rows, 6 categories |
-| `README.md` | This document |
+```
+Listicle Project/
+├── README.md                    this document
+├── docs/
+│   ├── README.md                 architecture narrative — layers, shared core, how to run each piece
+│   └── architecture.md           component diagram + full request-flow sequence diagram
+├── data/
+│   ├── synthetic_tool_db.csv     103 synthetic companies, 6 categories (§4a)
+│   └── synthetic_tool_db.json    same data, JSON
+├── src/listicle_pipeline/        shared pipeline core - see §6
+│   ├── state.py                   every Pydantic model, used by every entry point
+│   ├── db.py                      deterministic company lookup
+│   ├── config.py                  env loading, LLM client factory
+│   ├── graph.py                   the CLI's cyclic StateGraph
+│   └── nodes/                     guardrail, intent, db_query, keywords, retrieval_merge,
+│                                   human_review, summariser, formatter
+├── main.py                       CLI entry point — `uv run python main.py`
+├── api/                          FastAPI backend — `uv run uvicorn api.main:app`
+│   ├── main.py                    the 3 REST endpoints
+│   ├── retrieval_graph.py         cycle-free StateGraph reusing the shared retrieval nodes
+│   ├── draft_graph.py             cycle-free StateGraph reusing the shared summariser/formatter nodes
+│   ├── cache.py                   in-memory bridge for primary_keyword/keyword_set across calls
+│   ├── mappers.py, seo_checks.py, faq_jsonld.py    deterministic response shaping
+│   └── schemas.py                 the REST contract's request/response models
+├── frontend/                     Vite + React + TypeScript web app — `npm run dev`
+│   └── src/screens/, components/, state/    the 5 screens, inline editing, the reducer state machine
+├── tests/                        pytest — deterministic unit tests (shared core + `api/`)
+├── evals/                        evaluation framework — accuracy/precision/recall and groundedness
+│   ├── datasets/                  golden test cases for guardrail/intent classification
+│   └── results/                   timestamped eval run output
+├── output/                       generated drafts, written by the CLI (gitignored)
+└── pyproject.toml / uv.lock      Python dependencies
+```
